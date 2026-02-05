@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #333; }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #003d6b, #0066b2);
+            color: white; padding: 30px 40px; margin-bottom: 30px;
+        }
+        .dashboard-header h1 { font-size: 28px; margin-bottom: 5px; }
+        .dashboard-header .subtitle { opacity: 0.8; font-size: 14px; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+        .kpi-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-bottom: 30px;
+        }
+        .kpi-card {
+            background: white; border-radius: 8px; padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;
+        }
+        .kpi-label { font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 32px; font-weight: 700; color: #003d6b; margin: 5px 0; }
+        .kpi-change { font-size: 13px; }
+        .kpi-change.up { color: #28a745; }
+        .kpi-change.down { color: #dc3545; }
+        .kpi-change.flat { color: #6c757d; }
+
+        .section { background: white; border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .section h2 { color: #003d6b; margin-bottom: 15px; font-size: 20px; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #003d6b; font-size: 13px; text-transform: uppercase; }
+
+        .status-indicator {
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
+        }
+        .status-healthy { background: #28a745; }
+        .status-warning { background: #ffc107; }
+        .status-critical { background: #dc3545; }
+
+        .footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
+
+        @media (max-width: 768px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-header { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <h1>{{ title }}</h1>
+            <div class="subtitle">{{ subtitle | default('Business Intelligence Dashboard') }}</div>
+            <div style="opacity: 0.6; font-size: 12px; margin-top: 5px;">
+                Generated: {{ generated_at | default('') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        {% if kpis %}
+        <div class="kpi-row">
+            {% for kpi in kpis %}
+            <div class="kpi-card">
+                <div class="kpi-label">{{ kpi.label }}</div>
+                <div class="kpi-value">{{ kpi.value }}</div>
+                {% if kpi.change %}
+                <div class="kpi-change {{ kpi.trend }}">
+                    {% if kpi.trend == 'up' %}&#9650;{% elif kpi.trend == 'down' %}&#9660;{% else %}&#9654;{% endif %}
+                    {{ kpi.change }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for section in sections %}
+        <div class="section">
+            <h2>{{ section.heading }}</h2>
+            {{ section.content | safe }}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="footer">
+        Business Team Agent System &mdash; Auto-generated Dashboard
+    </div>
+</body>
+</html>

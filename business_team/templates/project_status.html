@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Status Board</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+
+        .header {
+            background: linear-gradient(135deg, #1a365d, #2d5aa0);
+            color: white; padding: 20px 30px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 22px; }
+        .header .timestamp { opacity: 0.7; font-size: 13px; }
+
+        .board {
+            display: flex; gap: 12px; padding: 20px;
+            overflow-x: auto; min-height: calc(100vh - 80px);
+        }
+
+        .column {
+            flex: 1; min-width: 260px; max-width: 320px;
+            background: #f7fafc; border-radius: 8px;
+        }
+        .column-header {
+            padding: 12px 15px; display: flex;
+            justify-content: space-between; align-items: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .column-header h3 {
+            font-size: 13px; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #1a365d;
+        }
+        .column-count {
+            background: #e2e8f0; padding: 2px 8px;
+            border-radius: 10px; font-size: 11px; font-weight: 600;
+        }
+        .column-body { padding: 8px 10px; }
+
+        .task-card {
+            background: white; border-radius: 6px; padding: 12px;
+            margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: pointer; transition: box-shadow 0.2s;
+        }
+        .task-card:hover { box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+        .task-project {
+            font-size: 10px; color: #718096; text-transform: uppercase;
+            letter-spacing: 0.3px; margin-bottom: 4px;
+        }
+        .task-title { font-weight: 600; font-size: 13px; color: #2d3748; margin-bottom: 8px; }
+        .task-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px; color: #a0aec0;
+        }
+        .task-assignee { display: flex; align-items: center; gap: 5px; }
+        .avatar {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #cbd5e0; display: flex; align-items: center;
+            justify-content: center; font-size: 9px; font-weight: 600; color: #4a5568;
+        }
+        .priority-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .priority-high { background: #e53e3e; }
+        .priority-medium { background: #ecc94b; }
+        .priority-low { background: #48bb78; }
+
+        .column[data-status="todo"] .column-header { border-top: 3px solid #a0aec0; }
+        .column[data-status="in_progress"] .column-header { border-top: 3px solid #4299e1; }
+        .column[data-status="review"] .column-header { border-top: 3px solid #ecc94b; }
+        .column[data-status="done"] .column-header { border-top: 3px solid #48bb78; }
+        .column[data-status="blocked"] .column-header { border-top: 3px solid #e53e3e; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Project Status Board</h1>
+        <span class="timestamp">Updated: {{ timestamp }}</span>
+    </div>
+    <div class="board">
+        {% for column in columns %}
+        <div class="column" data-status="{{ column.status }}">
+            <div class="column-header">
+                <h3>{{ column.label }}</h3>
+                <span class="column-count">{{ column.tasks | length }}</span>
+            </div>
+            <div class="column-body">
+                {% for task in column.tasks %}
+                <div class="task-card">
+                    <div class="task-project">{{ task.project_name }}</div>
+                    <div class="task-title">{{ task.title }}</div>
+                    <div class="task-footer">
+                        <div class="task-assignee">
+                            <div class="avatar">{{ task.assignee[:2] | upper }}</div>
+                            {{ task.assignee }}
+                        </div>
+                        <span class="priority-dot priority-{{ task.priority }}"></span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

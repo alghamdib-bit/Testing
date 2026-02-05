@@ -1,0 +1,25 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+*.pyo
+.venv/
+venv/
+
+# Generated output
+business_team/output/
+business_team/data/*.json
+!business_team/data/.gitkeep
+!business_team/data/logs/.gitkeep
+
+# Logs
+business_team/data/logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
