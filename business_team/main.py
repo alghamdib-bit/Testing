@@ -23,6 +23,13 @@ Commands:
     status-board      Generate the Kanban project board
     team-status       Show all agent statuses
 
+  Email Polling:
+    poll              Poll all inboxes once and show new emails
+    poll-start        Start continuous email polling (Ctrl+C to stop)
+    poll-status       Show poller status and account info
+    poll-notifications Show recent email notifications
+    poll-reset        Reset poller state (forget seen emails)
+
   Development:
     audit             Full team audit (capabilities, health, gaps)
     test-agents       Run standardized tests on all agents
@@ -41,6 +48,7 @@ import sys
 from datetime import datetime
 
 from business_team.agents import OfficeManagerAgent
+from business_team.email_poller import EmailPoller
 
 
 def print_header(title: str) -> None:
@@ -147,6 +155,86 @@ def cmd_team_status(manager: OfficeManagerAgent) -> None:
     print(json.dumps(status, indent=2))
 
 
+# ---- Email Polling Commands ----
+
+def cmd_poll(poller: EmailPoller) -> None:
+    print_header("EMAIL POLL")
+    result = poller.poll_once()
+    print(result["summary"])
+    if result.get("gmail_new"):
+        print(f"\n  Gmail ({len(result['gmail_new'])} new):")
+        for e in result["gmail_new"]:
+            pri = " [URGENT]" if e.get("_priority") == "high" else ""
+            print(f"    {pri} {e.get('subject', '?')} — from {e.get('from', '?')}")
+    if result.get("spl_new"):
+        print(f"\n  SPL Exchange ({len(result['spl_new'])} new):")
+        for e in result["spl_new"]:
+            pri = " [URGENT]" if e.get("_priority") == "high" else ""
+            print(f"    {pri} {e.get('subject', '?')} — from {e.get('from', '?')}")
+    if result.get("urgent_items"):
+        print(f"\n  !! {len(result['urgent_items'])} URGENT item(s) detected!")
+    if not result.get("gmail_new") and not result.get("spl_new"):
+        print("  No new emails detected.")
+    if result.get("gmail_error"):
+        print(f"  Gmail error: {result['gmail_error']}")
+    if result.get("spl_error"):
+        print(f"  SPL error: {result['spl_error']}")
+    print()
+
+
+def cmd_poll_start(poller: EmailPoller) -> None:
+    print_header("EMAIL POLLER — CONTINUOUS MODE")
+    poller.run_continuous()
+
+
+def cmd_poll_status(poller: EmailPoller) -> None:
+    print_header("EMAIL POLLER STATUS")
+    status = poller.get_status()
+    print(f"  Interval:         {status['interval_minutes']} minutes")
+    print(f"  Total polls:      {status['total_polls']}")
+    print(f"  Emails detected:  {status['total_new_emails_detected']}")
+    print()
+    print(f"  Gmail account:    {status['gmail_account']}")
+    print(f"  Gmail configured: {status['gmail_configured']}")
+    print(f"  Gmail last check: {status['gmail_last_checked'] or 'never'}")
+    print(f"  Gmail tracked:    {status['gmail_tracked_uids']} UIDs")
+    print()
+    print(f"  SPL account:      {status['spl_account']}")
+    print(f"  SPL configured:   {status['spl_configured']}")
+    print(f"  SPL last check:   {status['spl_last_checked'] or 'never'}")
+    print(f"  SPL tracked:      {status['spl_tracked_uids']} UIDs")
+    print()
+
+
+def cmd_poll_notifications(poller: EmailPoller) -> None:
+    print_header("EMAIL NOTIFICATIONS")
+    notifs = poller.get_notifications(limit=20)
+    if not notifs:
+        print("  No notifications yet. Run 'poll' to check inboxes.")
+    else:
+        for n in notifs:
+            t = n.get("time", "")[:19]
+            gc = n.get("gmail_count", 0)
+            sc = n.get("spl_count", 0)
+            uc = n.get("urgent_count", 0)
+            urgent_tag = f" — {uc} URGENT" if uc else ""
+            print(f"  [{t}] Gmail: {gc}, SPL: {sc}{urgent_tag}")
+            for s in n.get("all_subjects", []):
+                tag = "[WORK]" if s["source"] == "spl_exchange" else "[PERSONAL]"
+                pri = " !!" if s["priority"] == "high" else ""
+                print(f"    {tag}{pri} {s['subject']} — {s['from']}")
+    poller.mark_notifications_read()
+    print()
+
+
+def cmd_poll_reset(poller: EmailPoller) -> None:
+    print_header("RESET POLLER")
+    result = poller.reset_state()
+    print(f"  {result['message']}")
+    print("  Poller will treat all emails as new on next poll.")
+    print()
+
+
 # ---- Development Commands ----
 
 def cmd_audit(manager: OfficeManagerAgent) -> None:
@@ -198,12 +286,13 @@ def cmd_ask(manager: OfficeManagerAgent, message: str) -> None:
     print_result(result)
 
 
-def cmd_interactive(manager: OfficeManagerAgent) -> None:
+def cmd_interactive(manager: OfficeManagerAgent, poller: EmailPoller) -> None:
     print_header("INTERACTIVE MODE")
     print("Type your requests to the Office Manager. Type 'quit' to exit.")
     print("The Office Manager can supervise agents AND develop/improve them.\n")
     print("Quick commands: 'daily brief', 'weekly brief', 'team status',")
-    print("  'audit', 'test agents', 'dev log', 'reload <agent>'\n")
+    print("  'audit', 'test agents', 'dev log', 'reload <agent>',")
+    print("  'poll', 'poll status', 'poll notifications'\n")
 
     while True:
         try:
@@ -242,6 +331,22 @@ def cmd_interactive(manager: OfficeManagerAgent) -> None:
             agent_name = lower.replace("reload ", "").strip()
             cmd_reload(manager, agent_name)
             continue
+        # Polling quick commands
+        if lower == "poll":
+            cmd_poll(poller)
+            continue
+        if lower == "poll status":
+            cmd_poll_status(poller)
+            continue
+        if lower in ("poll notifications", "notifications"):
+            cmd_poll_notifications(poller)
+            continue
+        if lower == "poll reset":
+            cmd_poll_reset(poller)
+            continue
+        if lower == "check emails":
+            cmd_check_emails(manager)
+            continue
 
         result = manager.handle_manager_request(user_input)
         print_result(result)
@@ -271,6 +376,12 @@ def main() -> None:
             "monthly-report",
             "status-board",
             "team-status",
+            # Email Polling
+            "poll",
+            "poll-start",
+            "poll-status",
+            "poll-notifications",
+            "poll-reset",
             # Development
             "audit",
             "test-agents",
@@ -288,11 +399,34 @@ def main() -> None:
         nargs="*",
         help="Message for 'ask'/'develop' commands, or agent name for 'reload'",
     )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=0,
+        help="Polling interval in minutes (for poll-start)",
+    )
 
     args = parser.parse_args()
 
+    # Polling commands don't need the full agent system
+    polling_commands = {"poll", "poll-start", "poll-status", "poll-notifications", "poll-reset"}
+    if args.command in polling_commands:
+        poller = EmailPoller(interval_minutes=args.interval)
+        if args.command == "poll":
+            cmd_poll(poller)
+        elif args.command == "poll-start":
+            cmd_poll_start(poller)
+        elif args.command == "poll-status":
+            cmd_poll_status(poller)
+        elif args.command == "poll-notifications":
+            cmd_poll_notifications(poller)
+        elif args.command == "poll-reset":
+            cmd_poll_reset(poller)
+        return
+
     print("\nInitializing Business Team Agent System...")
     manager = OfficeManagerAgent()
+    poller = EmailPoller()
     print("All agents ready. Office Manager has supervisor + developer capabilities.\n")
 
     commands = {
@@ -314,7 +448,7 @@ def main() -> None:
         "test-agents": lambda: cmd_test_agents(manager),
         "dev-log": lambda: cmd_dev_log(manager),
         # General
-        "interactive": lambda: cmd_interactive(manager),
+        "interactive": lambda: cmd_interactive(manager, poller),
     }
 
     if args.command == "ask":
