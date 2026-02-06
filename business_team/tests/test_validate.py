@@ -63,6 +63,14 @@ def test_imports():
         check("all 9 tool modules", False, str(e))
 
     try:
+        from business_team.tools.gmail_connector import GmailConnector
+        from business_team.tools.google_calendar_connector import GoogleCalendarConnector
+        from business_team.tools.exchange_connector import ExchangeConnector
+        check("all 3 connector modules", True)
+    except Exception as e:
+        check("all 3 connector modules", False, str(e))
+
+    try:
         from business_team.agents.base_agent import BaseAgent
         from business_team.agents.secretary import SecretaryAgent
         from business_team.agents.business_analyst import BusinessAnalystAgent
@@ -89,6 +97,10 @@ def test_tool_definitions():
     from business_team.tools.agent_dev_tools import AgentDevTools
     from business_team.tools.agent_monitor import AgentMonitorTools
 
+    from business_team.tools.gmail_connector import GmailConnector
+    from business_team.tools.google_calendar_connector import GoogleCalendarConnector
+    from business_team.tools.exchange_connector import ExchangeConnector
+
     tool_classes = [
         ("EmailTools", EmailTools),
         ("CalendarTools", CalendarTools),
@@ -99,6 +111,9 @@ def test_tool_definitions():
         ("ReportingTools", ReportingTools),
         ("AgentDevTools", AgentDevTools),
         ("AgentMonitorTools", AgentMonitorTools),
+        ("GmailConnector", GmailConnector),
+        ("GoogleCalendarConnector", GoogleCalendarConnector),
+        ("ExchangeConnector", ExchangeConnector),
     ]
 
     total_tools = 0
@@ -118,7 +133,7 @@ def test_tool_definitions():
 
         check(f"{cls_name}: {count} tools defined", all_valid)
 
-    check(f"total tools count >= 40", total_tools >= 40, f"got {total_tools}")
+    check(f"total tools count >= 56", total_tools >= 56, f"got {total_tools}")
     print(f"  Total tool definitions: {total_tools}")
 
 
@@ -309,6 +324,106 @@ def test_reporting_tools():
 
 
 # ============================================================
+# Section 3h: Connector Demo Mode Tests
+# ============================================================
+def test_gmail_connector():
+    section("3h. GmailConnector (demo mode)")
+    from business_team.tools.gmail_connector import GmailConnector
+    gc = GmailConnector()
+
+    # Demo mode — not configured
+    emails = gc.gmail_read_inbox(limit=5)
+    check("gmail_read_inbox returns list", isinstance(emails, list))
+    check("gmail demo data present", len(emails) > 0)
+    if emails:
+        check("gmail email has subject", "subject" in emails[0])
+
+    # Send in demo mode
+    result = gc.gmail_send(to="test@test.com", subject="Test", body="Hello")
+    check("gmail_send demo mode", result.get("status") == "demo_mode")
+
+    # Log summary
+    result = gc.gmail_log_summary(
+        subject="Test Gmail", sender="person@gmail.com",
+        summary="Test email", priority="low"
+    )
+    check("gmail_log_summary works", result.get("status") == "logged")
+
+    # Folders
+    folders = gc.gmail_get_folders()
+    check("gmail_get_folders returns list", isinstance(folders, list))
+
+    # handle_tool_call dispatch
+    result = gc.handle_tool_call("gmail_read_inbox", {"limit": 3})
+    check("gmail handle_tool_call dispatch", isinstance(result, list))
+
+
+def test_gcal_connector():
+    section("3i. GoogleCalendarConnector (demo mode)")
+    from business_team.tools.google_calendar_connector import GoogleCalendarConnector
+    gc = GoogleCalendarConnector()
+
+    events = gc.gcal_get_events(days_ahead=1)
+    check("gcal_get_events returns list", isinstance(events, list))
+    check("gcal demo events present", len(events) > 0)
+
+    today_events = gc.gcal_get_today()
+    check("gcal_get_today returns list", isinstance(today_events, list))
+
+    result = gc.gcal_create_event(
+        summary="Test Event", date="2026-03-01",
+        start_time="10:00", end_time="11:00"
+    )
+    check("gcal_create_event demo mode", result.get("status") == "demo_mode")
+
+    result = gc.gcal_check_availability(
+        date="2026-03-01", start_time="10:00", end_time="11:00"
+    )
+    check("gcal_check_availability demo", result.get("available") is True)
+
+    calendars = gc.gcal_list_calendars()
+    check("gcal_list_calendars returns list", isinstance(calendars, list))
+
+    # handle_tool_call dispatch
+    result = gc.handle_tool_call("gcal_get_today", {})
+    check("gcal handle_tool_call dispatch", isinstance(result, list))
+
+
+def test_exchange_connector():
+    section("3j. ExchangeConnector (demo mode)")
+    from business_team.tools.exchange_connector import ExchangeConnector
+    ec = ExchangeConnector()
+
+    emails = ec.spl_read_inbox(limit=5)
+    check("spl_read_inbox returns list", isinstance(emails, list))
+    check("spl demo emails present", len(emails) > 0)
+    if emails:
+        check("spl email has subject", "subject" in emails[0])
+
+    result = ec.spl_send_email(
+        to=["test@splonline.com.sa"], subject="Test", body="Hello"
+    )
+    check("spl_send_email demo mode", result.get("status") == "demo_mode")
+
+    result = ec.spl_log_summary(
+        subject="Test Work Email", sender="colleague@splonline.com.sa",
+        summary="Test work email summary", priority="medium"
+    )
+    check("spl_log_summary works", result.get("status") == "logged")
+
+    folders = ec.spl_get_folders()
+    check("spl_get_folders returns list", isinstance(folders, list))
+
+    calendar = ec.spl_get_calendar(days_ahead=1)
+    check("spl_get_calendar returns list", isinstance(calendar, list))
+    check("spl demo calendar present", len(calendar) > 0)
+
+    # handle_tool_call dispatch
+    result = ec.handle_tool_call("spl_read_inbox", {"limit": 3})
+    check("spl handle_tool_call dispatch", isinstance(result, list))
+
+
+# ============================================================
 # Section 4: Agent Dev Tools (Offline)
 # ============================================================
 def test_agent_dev_tools():
@@ -356,7 +471,7 @@ def test_agent_tool_routing():
     from business_team.agents.business_analyst import BusinessAnalystAgent
     from business_team.agents.projects_manager import ProjectsManagerAgent
 
-    # Secretary routing
+    # Secretary routing — legacy tools
     sec = SecretaryAgent()
     result = sec.execute_tool("read_emails", {"limit": 3})
     check("Secretary routes read_emails", isinstance(result, list))
@@ -364,6 +479,16 @@ def test_agent_tool_routing():
     check("Secretary routes get_today_schedule", isinstance(result, list))
     result = sec.execute_tool("get_todo_summary", {})
     check("Secretary routes get_todo_summary", "total" in result)
+
+    # Secretary routing — real connectors (demo mode)
+    result = sec.execute_tool("gmail_read_inbox", {"limit": 3})
+    check("Secretary routes gmail_read_inbox", isinstance(result, list))
+    result = sec.execute_tool("gcal_get_today", {})
+    check("Secretary routes gcal_get_today", isinstance(result, list))
+    result = sec.execute_tool("spl_read_inbox", {"limit": 3})
+    check("Secretary routes spl_read_inbox", isinstance(result, list))
+    result = sec.execute_tool("spl_get_calendar", {})
+    check("Secretary routes spl_get_calendar", isinstance(result, list))
 
     # Business Analyst routing
     ba = BusinessAnalystAgent()
@@ -425,7 +550,7 @@ def test_office_manager_routing():
 # ============================================================
 def main():
     print("\n" + "=" * 50)
-    print("  BUSINESS TEAM — PHASE 1 VALIDATION SUITE")
+    print("  BUSINESS TEAM — PHASE 1+2 VALIDATION SUITE")
     print(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 50)
 
@@ -438,6 +563,9 @@ def main():
     test_presentation_tools()
     test_dashboard_tools()
     test_reporting_tools()
+    test_gmail_connector()
+    test_gcal_connector()
+    test_exchange_connector()
     test_agent_dev_tools()
     test_agent_tool_routing()
     test_office_manager_routing()

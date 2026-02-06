@@ -4,3 +4,11 @@ jinja2>=3.1.4
 markdown>=3.7
 python-dateutil>=2.9.0
 schedule>=1.2.2
+
+# Phase 2: Real data connectors
+python-dotenv>=1.0.0
+imap-tools>=1.7.0
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+exchangelib>=5.1.0

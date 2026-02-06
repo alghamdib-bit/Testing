@@ -7,6 +7,9 @@ from .project_tools import ProjectTools
 from .reporting_tools import ReportingTools
 from .agent_dev_tools import AgentDevTools
 from .agent_monitor import AgentMonitorTools
+from .gmail_connector import GmailConnector
+from .google_calendar_connector import GoogleCalendarConnector
+from .exchange_connector import ExchangeConnector
 
 __all__ = [
     "EmailTools",
@@ -18,4 +21,7 @@ __all__ = [
     "ReportingTools",
     "AgentDevTools",
     "AgentMonitorTools",
+    "GmailConnector",
+    "GoogleCalendarConnector",
+    "ExchangeConnector",
 ]

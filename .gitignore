@@ -1,5 +1,9 @@
-# Environment
+# Environment & Credentials (NEVER commit)
 .env
+credentials.json
+token.json
+business_team/credentials.json
+business_team/token.json
 *.pyc
 __pycache__/
 *.pyo
