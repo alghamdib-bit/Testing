@@ -3,12 +3,13 @@
 Business Team Multi-Agent System — Main Entry Point
 
 A multi-agent system powered by Claude for business office management.
-The Office Manager agent supervises Secretary, Business Analyst, and Projects Manager.
+The Office Manager agent supervises AND develops Secretary, Business Analyst, and Projects Manager.
 
 Usage:
     python -m business_team.main [command]
 
 Commands:
+  Supervision:
     daily-brief       Generate today's daily brief
     weekly-brief      Generate the weekly consolidated brief
     check-emails      Check and summarize recent emails
@@ -21,8 +22,17 @@ Commands:
     monthly-report    Generate monthly project report
     status-board      Generate the Kanban project board
     team-status       Show all agent statuses
+
+  Development:
+    audit             Full team audit (capabilities, health, gaps)
+    test-agents       Run standardized tests on all agents
+    dev-log           Show agent development change log
+    develop <msg>     Ask Office Manager to develop/improve an agent
+    reload <agent>    Reload an agent after code changes
+
+  General:
     ask <message>     Send a request to the Office Manager
-    interactive       Start interactive chat mode
+    interactive       Start interactive chat mode (default)
 """
 
 import argparse
@@ -45,6 +55,8 @@ def print_result(result: str) -> None:
     print(result)
     print("\n" + "-" * 60)
 
+
+# ---- Supervision Commands ----
 
 def cmd_daily_brief(manager: OfficeManagerAgent) -> None:
     print_header("DAILY BRIEF")
@@ -135,6 +147,51 @@ def cmd_team_status(manager: OfficeManagerAgent) -> None:
     print(json.dumps(status, indent=2))
 
 
+# ---- Development Commands ----
+
+def cmd_audit(manager: OfficeManagerAgent) -> None:
+    print_header("TEAM AUDIT")
+    print("Analyzing all agents: capabilities, health, and improvement opportunities...")
+    result = manager.audit_team()
+    print_result(result)
+
+
+def cmd_test_agents(manager: OfficeManagerAgent) -> None:
+    print_header("AGENT TESTING")
+    print("Running standardized tests on all agents...")
+    result = manager.test_all_agents()
+    print_result(result)
+
+
+def cmd_dev_log(manager: OfficeManagerAgent) -> None:
+    print_header("DEVELOPMENT LOG")
+    log = manager.dev_tools.get_dev_log(30)
+    if not log:
+        print("No development actions logged yet.")
+    else:
+        for entry in log:
+            ts = entry.get("timestamp", "")[:19]
+            action = entry.get("action", "")
+            agent = entry.get("agent_name", "")
+            reason = entry.get("reason", "")
+            print(f"  [{ts}] {action} on {agent}: {reason}")
+    print()
+
+
+def cmd_develop(manager: OfficeManagerAgent, message: str) -> None:
+    print_header("AGENT DEVELOPMENT")
+    result = manager.develop_agent(message)
+    print_result(result)
+
+
+def cmd_reload(manager: OfficeManagerAgent, agent_name: str) -> None:
+    print_header(f"RELOAD AGENT: {agent_name}")
+    result = manager.reload_agent(agent_name)
+    print(json.dumps(result, indent=2))
+
+
+# ---- General Commands ----
+
 def cmd_ask(manager: OfficeManagerAgent, message: str) -> None:
     print_header("OFFICE MANAGER RESPONSE")
     result = manager.handle_manager_request(message)
@@ -143,7 +200,10 @@ def cmd_ask(manager: OfficeManagerAgent, message: str) -> None:
 
 def cmd_interactive(manager: OfficeManagerAgent) -> None:
     print_header("INTERACTIVE MODE")
-    print("Type your requests to the Office Manager. Type 'quit' to exit.\n")
+    print("Type your requests to the Office Manager. Type 'quit' to exit.")
+    print("The Office Manager can supervise agents AND develop/improve them.\n")
+    print("Quick commands: 'daily brief', 'weekly brief', 'team status',")
+    print("  'audit', 'test agents', 'dev log', 'reload <agent>'\n")
 
     while True:
         try:
@@ -157,14 +217,30 @@ def cmd_interactive(manager: OfficeManagerAgent) -> None:
         if user_input.lower() in ("quit", "exit", "q"):
             print("Goodbye!")
             break
-        if user_input.lower() == "daily brief":
+
+        # Quick commands
+        lower = user_input.lower()
+        if lower == "daily brief":
             cmd_daily_brief(manager)
             continue
-        if user_input.lower() == "weekly brief":
+        if lower == "weekly brief":
             cmd_weekly_brief(manager)
             continue
-        if user_input.lower() == "team status":
+        if lower == "team status":
             cmd_team_status(manager)
+            continue
+        if lower == "audit":
+            cmd_audit(manager)
+            continue
+        if lower == "test agents":
+            cmd_test_agents(manager)
+            continue
+        if lower == "dev log":
+            cmd_dev_log(manager)
+            continue
+        if lower.startswith("reload "):
+            agent_name = lower.replace("reload ", "").strip()
+            cmd_reload(manager, agent_name)
             continue
 
         result = manager.handle_manager_request(user_input)
@@ -182,6 +258,7 @@ def main() -> None:
         nargs="?",
         default="interactive",
         choices=[
+            # Supervision
             "daily-brief",
             "weekly-brief",
             "check-emails",
@@ -194,6 +271,13 @@ def main() -> None:
             "monthly-report",
             "status-board",
             "team-status",
+            # Development
+            "audit",
+            "test-agents",
+            "dev-log",
+            "develop",
+            "reload",
+            # General
             "ask",
             "interactive",
         ],
@@ -202,16 +286,17 @@ def main() -> None:
     parser.add_argument(
         "message",
         nargs="*",
-        help="Message for the 'ask' command",
+        help="Message for 'ask'/'develop' commands, or agent name for 'reload'",
     )
 
     args = parser.parse_args()
 
     print("\nInitializing Business Team Agent System...")
     manager = OfficeManagerAgent()
-    print("All agents ready.\n")
+    print("All agents ready. Office Manager has supervisor + developer capabilities.\n")
 
     commands = {
+        # Supervision
         "daily-brief": lambda: cmd_daily_brief(manager),
         "weekly-brief": lambda: cmd_weekly_brief(manager),
         "check-emails": lambda: cmd_check_emails(manager),
@@ -224,6 +309,11 @@ def main() -> None:
         "monthly-report": lambda: cmd_monthly_report(manager),
         "status-board": lambda: cmd_status_board(manager),
         "team-status": lambda: cmd_team_status(manager),
+        # Development
+        "audit": lambda: cmd_audit(manager),
+        "test-agents": lambda: cmd_test_agents(manager),
+        "dev-log": lambda: cmd_dev_log(manager),
+        # General
         "interactive": lambda: cmd_interactive(manager),
     }
 
@@ -233,6 +323,18 @@ def main() -> None:
             print("Usage: python -m business_team.main ask 'your question here'")
             sys.exit(1)
         cmd_ask(manager, " ".join(args.message))
+    elif args.command == "develop":
+        if not args.message:
+            print("Error: 'develop' command requires a description.")
+            print("Usage: python -m business_team.main develop 'improve secretary email parsing'")
+            sys.exit(1)
+        cmd_develop(manager, " ".join(args.message))
+    elif args.command == "reload":
+        if not args.message:
+            print("Error: 'reload' command requires an agent name.")
+            print("Usage: python -m business_team.main reload secretary")
+            sys.exit(1)
+        cmd_reload(manager, args.message[0])
     elif args.command in commands:
         commands[args.command]()
     else:
