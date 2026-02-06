@@ -71,3 +71,24 @@ SCHEDULE_CONFIG = {
 
 # --- Logging ---
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+
+# --- Resilience & Validation ---
+class ConfigurationError(Exception):
+    """Raised when required configuration is missing."""
+    pass
+
+
+MAX_CONVERSATION_TURNS = int(os.getenv("MAX_CONVERSATION_TURNS", "50"))
+API_MAX_RETRIES = int(os.getenv("API_MAX_RETRIES", "3"))
+
+
+def validate_config():
+    """Check that required configuration is set. Call lazily, not at import time."""
+    if not ANTHROPIC_API_KEY:
+        raise ConfigurationError(
+            "ANTHROPIC_API_KEY is not set.\n"
+            "Add your API key to .env:\n"
+            "  ANTHROPIC_API_KEY=sk-ant-...\n"
+            "Get one at: https://console.anthropic.com/settings/keys"
+        )
