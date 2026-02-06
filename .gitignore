@@ -11,9 +11,15 @@ business_team/output/
 business_team/data/*.json
 !business_team/data/.gitkeep
 !business_team/data/logs/.gitkeep
+!business_team/data/backups/.gitkeep
 
 # Logs
 business_team/data/logs/*.log
+
+# Agent backups and custom tools (generated at runtime)
+business_team/data/backups/*.py
+business_team/data/custom_tools/
+business_team/data/prompts/
 
 # IDE
 .vscode/
