@@ -15,17 +15,19 @@ from business_team import config
 class ProjectTools:
     """Tools for managing projects and tasks."""
 
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.projects_file = config.DATA_DIR / "projects.json"
         self.tasks_file = config.DATA_DIR / "tasks.json"
-        if not self.projects_file.exists():
-            self.projects_file.write_text(
-                json.dumps(self._get_demo_projects(), indent=2)
-            )
-        if not self.tasks_file.exists():
-            self.tasks_file.write_text(
-                json.dumps(self._get_demo_tasks(), indent=2)
-            )
+        if not self.db:
+            if not self.projects_file.exists():
+                self.projects_file.write_text(
+                    json.dumps(self._get_demo_projects(), indent=2)
+                )
+            if not self.tasks_file.exists():
+                self.tasks_file.write_text(
+                    json.dumps(self._get_demo_tasks(), indent=2)
+                )
 
     @staticmethod
     def get_tool_definitions() -> list[dict]:
@@ -181,12 +183,20 @@ class ProjectTools:
         ]
 
     def get_projects(self, status: str | None = None) -> list[dict]:
+        if self.db:
+            return self.db.get_projects(status=status)
         projects = json.loads(self.projects_file.read_text())
         if status:
             projects = [p for p in projects if p.get("status") == status]
         return projects
 
     def get_project_detail(self, project_id: str) -> dict:
+        if self.db:
+            project = self.db.get_project(project_id)
+            if not project:
+                return {"error": f"Project {project_id} not found"}
+            project["tasks"] = self.db.get_tasks(project_id=project_id)
+            return project
         projects = json.loads(self.projects_file.read_text())
         tasks = json.loads(self.tasks_file.read_text())
         project = next((p for p in projects if p["id"] == project_id), None)
@@ -205,6 +215,13 @@ class ProjectTools:
         description: str = "",
         milestones: list[dict] | None = None,
     ) -> dict:
+        if self.db:
+            project = self.db.create_project(
+                name=name, owner=owner, start_date=start_date,
+                target_end_date=target_end_date, description=description,
+                milestones=milestones or [],
+            )
+            return {"status": "created", "project": project}
         projects = json.loads(self.projects_file.read_text())
         project = {
             "id": f"proj_{len(projects) + 1:03d}",
@@ -231,6 +248,14 @@ class ProjectTools:
         progress_percent: int | None = None,
         notes: str | None = None,
     ) -> dict:
+        if self.db:
+            result = self.db.update_project(
+                project_id, status=status,
+                progress_percent=progress_percent, notes=notes,
+            )
+            if "error" in result:
+                return result
+            return {"status": "updated", "project": result}
         projects = json.loads(self.projects_file.read_text())
         for proj in projects:
             if proj["id"] == project_id:
@@ -253,6 +278,8 @@ class ProjectTools:
         assignee: str | None = None,
         status: str | None = None,
     ) -> list[dict]:
+        if self.db:
+            return self.db.get_tasks(project_id=project_id, status=status, assignee=assignee)
         tasks = json.loads(self.tasks_file.read_text())
         if project_id:
             tasks = [t for t in tasks if t.get("project_id") == project_id]
@@ -273,6 +300,12 @@ class ProjectTools:
         priority: str = "medium",
         due_date: str = "",
     ) -> dict:
+        if self.db:
+            task = self.db.create_task(
+                project_id=project_id, title=title, assignee=assignee,
+                description=description, priority=priority, due_date=due_date,
+            )
+            return {"status": "created", "task": task}
         tasks = json.loads(self.tasks_file.read_text())
         task = {
             "id": f"task_{len(tasks) + 1:04d}",
@@ -298,6 +331,14 @@ class ProjectTools:
         progress_percent: int | None = None,
         notes: str | None = None,
     ) -> dict:
+        if self.db:
+            result = self.db.update_task(
+                task_id, status=status,
+                progress_percent=progress_percent, notes=notes,
+            )
+            if "error" in result:
+                return result
+            return {"status": "updated", "task": result}
         tasks = json.loads(self.tasks_file.read_text())
         for task in tasks:
             if task["id"] == task_id:
@@ -315,8 +356,12 @@ class ProjectTools:
         return {"error": f"Task {task_id} not found"}
 
     def get_project_summary(self) -> dict:
-        projects = json.loads(self.projects_file.read_text())
-        tasks = json.loads(self.tasks_file.read_text())
+        if self.db:
+            projects = self.db.get_projects()
+            tasks = self.db.get_tasks()
+        else:
+            projects = json.loads(self.projects_file.read_text())
+            tasks = json.loads(self.tasks_file.read_text())
         summary = {
             "total_projects": len(projects),
             "by_status": {},

@@ -54,11 +54,12 @@ You have access to SPL channel data tools, presentation tools, and dashboard too
 class BusinessAnalystAgent(BaseAgent):
     """Business Analyst agent for SPL Digital Channels monitoring and reporting."""
 
-    def __init__(self):
+    def __init__(self, memory=None):
         super().__init__(
             name="business_analyst",
             role="Business Analyst - SPL Digital Channels & Presentations",
             system_prompt=ANALYST_SYSTEM_PROMPT,
+            memory=memory,
         )
         self.presentation_tools = PresentationTools()
         self.dashboard_tools = DashboardTools()

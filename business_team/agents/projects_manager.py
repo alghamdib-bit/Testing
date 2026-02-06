@@ -52,13 +52,15 @@ You have access to project management tools and report generation tools. Use the
 class ProjectsManagerAgent(BaseAgent):
     """Projects Manager agent for project tracking and reporting."""
 
-    def __init__(self):
+    def __init__(self, db=None, memory=None):
         super().__init__(
             name="projects_manager",
             role="Projects Manager - Project Tracking & Reporting",
             system_prompt=PM_SYSTEM_PROMPT,
+            memory=memory,
+            db=db,
         )
-        self.project_tools = ProjectTools()
+        self.project_tools = ProjectTools(db=db)
         self.reporting_tools = ReportingTools()
 
         all_tools = (

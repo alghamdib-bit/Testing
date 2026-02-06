@@ -29,6 +29,7 @@ from .projects_manager import ProjectsManagerAgent
 from business_team import config
 from business_team.tools.agent_dev_tools import AgentDevTools
 from business_team.tools.agent_monitor import AgentMonitorTools
+from business_team.router import SmartRouter
 
 OFFICE_MANAGER_SYSTEM_PROMPT = """You are the Office Manager Agent — the senior supervisor AND developer of a business management team. You coordinate and BUILD three agents:
 
@@ -119,16 +120,18 @@ You receive reports FROM the other agents. Synthesize their information into cle
 class OfficeManagerAgent(BaseAgent):
     """Office Manager — supervises, develops, and improves all other agents."""
 
-    def __init__(self):
+    def __init__(self, db=None, memory=None):
         super().__init__(
             name="office_manager",
             role="Office Manager - Supervisor, Developer & Executive Briefings",
             system_prompt=OFFICE_MANAGER_SYSTEM_PROMPT,
+            memory=memory,
+            db=db,
         )
-        # Initialize subordinate agents
-        self.secretary = SecretaryAgent()
-        self.analyst = BusinessAnalystAgent()
-        self.projects_manager = ProjectsManagerAgent()
+        # Initialize subordinate agents with shared database and memory
+        self.secretary = SecretaryAgent(db=db, memory=memory)
+        self.analyst = BusinessAnalystAgent(memory=memory)
+        self.projects_manager = ProjectsManagerAgent(db=db, memory=memory)
 
         # Development & monitoring tools
         self.dev_tools = AgentDevTools()
@@ -140,6 +143,9 @@ class OfficeManagerAgent(BaseAgent):
             "business_analyst": self.analyst,
             "projects_manager": self.projects_manager,
         }
+
+        # Smart request routing
+        self.router = SmartRouter()
 
         # Register all tools: dev + monitoring
         all_tools = (
@@ -312,29 +318,44 @@ class OfficeManagerAgent(BaseAgent):
         )
         plan = self.think(prompt)
 
-        task_lower = task_description.lower()
-        results = {"plan": plan, "delegated_to": [], "results": {}}
+        # Use SmartRouter for intelligent delegation
+        decision = self.router.route(task_description)
+        self.logger.info(
+            f"SmartRouter: {decision.agent_name} "
+            f"(confidence={decision.confidence:.2f}, type={decision.request_type}): "
+            f"{decision.reasoning}"
+        )
 
-        if any(kw in task_lower for kw in ("email", "calendar", "schedule", "todo", "meeting")):
-            self.secretary.reset_conversation()
-            results["delegated_to"].append("secretary")
-            results["results"]["secretary"] = self.secretary.think(
+        results = {
+            "plan": plan,
+            "delegated_to": [],
+            "results": {},
+            "routing": {
+                "agent": decision.agent_name,
+                "confidence": decision.confidence,
+                "reasoning": decision.reasoning,
+                "request_type": decision.request_type,
+            },
+        }
+
+        # Delegate to primary agent
+        agent = self._agent_map.get(decision.agent_name)
+        if agent:
+            agent.reset_conversation()
+            results["delegated_to"].append(decision.agent_name)
+            results["results"][decision.agent_name] = agent.think(
                 f"The Office Manager has delegated this task to you: {task_description}"
             )
 
-        if any(kw in task_lower for kw in ("spl", "channel", "dashboard", "presentation", "kpi", "analytics")):
-            self.analyst.reset_conversation()
-            results["delegated_to"].append("business_analyst")
-            results["results"]["analyst"] = self.analyst.think(
-                f"The Office Manager has delegated this task to you: {task_description}"
-            )
-
-        if any(kw in task_lower for kw in ("project", "task", "milestone", "report", "status", "progress")):
-            self.projects_manager.reset_conversation()
-            results["delegated_to"].append("projects_manager")
-            results["results"]["projects_manager"] = self.projects_manager.think(
-                f"The Office Manager has delegated this task to you: {task_description}"
-            )
+        # Delegate to secondary agents if present
+        for secondary_name in (decision.secondary_agents or []):
+            secondary_agent = self._agent_map.get(secondary_name)
+            if secondary_agent and secondary_name not in results["delegated_to"]:
+                secondary_agent.reset_conversation()
+                results["delegated_to"].append(secondary_name)
+                results["results"][secondary_name] = secondary_agent.think(
+                    f"The Office Manager has delegated this task to you: {task_description}"
+                )
 
         return json.dumps(results, indent=2)
 
@@ -450,13 +471,13 @@ class OfficeManagerAgent(BaseAgent):
         """Reload an agent instance to pick up code/prompt changes."""
         try:
             if agent_name == "secretary":
-                self.secretary = SecretaryAgent()
+                self.secretary = SecretaryAgent(db=self.db, memory=self.memory)
                 self._agent_map["secretary"] = self.secretary
             elif agent_name == "business_analyst":
-                self.analyst = BusinessAnalystAgent()
+                self.analyst = BusinessAnalystAgent(memory=self.memory)
                 self._agent_map["business_analyst"] = self.analyst
             elif agent_name == "projects_manager":
-                self.projects_manager = ProjectsManagerAgent()
+                self.projects_manager = ProjectsManagerAgent(db=self.db, memory=self.memory)
                 self._agent_map["projects_manager"] = self.projects_manager
             else:
                 return {"error": f"Unknown agent: {agent_name}"}

@@ -64,16 +64,18 @@ Always end reports with a "PRIORITY ALERTS" section if there are urgent items.""
 class SecretaryAgent(BaseAgent):
     """Secretary agent managing emails, calendar, and to-do lists across multiple accounts."""
 
-    def __init__(self):
+    def __init__(self, db=None, memory=None):
         super().__init__(
             name="secretary",
             role="Secretary - Multi-Account Email, Calendar & To-Do Management",
             system_prompt=SECRETARY_SYSTEM_PROMPT,
+            memory=memory,
+            db=db,
         )
         # Legacy/local tools (always available, provide demo fallback)
-        self.email_tools = EmailTools()
-        self.calendar_tools = CalendarTools()
-        self.todo_tools = TodoTools()
+        self.email_tools = EmailTools(db=db)
+        self.calendar_tools = CalendarTools(db=db)
+        self.todo_tools = TodoTools(db=db)
 
         # Real connectors (gracefully degrade to demo if not configured)
         self.gmail = GmailConnector()

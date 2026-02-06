@@ -14,9 +14,10 @@ from business_team import config
 class CalendarTools:
     """Tools for managing calendar events and schedules."""
 
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.calendar_file = config.DATA_DIR / "calendar.json"
-        if not self.calendar_file.exists():
+        if not self.db and not self.calendar_file.exists():
             self.calendar_file.write_text(json.dumps(self._get_demo_events(), indent=2))
 
     @staticmethod
@@ -108,6 +109,8 @@ class CalendarTools:
         self, start_date: str, end_date: str | None = None
     ) -> list[dict]:
         """Get events within a date range."""
+        if self.db:
+            return self.db.get_events(start_date, end_date)
         events = json.loads(self.calendar_file.read_text())
         if not end_date:
             end_date = start_date
@@ -128,6 +131,12 @@ class CalendarTools:
         notes: str = "",
     ) -> dict:
         """Add a new calendar event."""
+        if self.db:
+            event = self.db.create_event(
+                title=title, date=date, start_time=start_time, end_time=end_time,
+                location=location, attendees=attendees or [], priority=priority, notes=notes,
+            )
+            return {"status": "created", "event": event}
         events = json.loads(self.calendar_file.read_text())
         event = {
             "id": f"evt_{len(events) + 1:04d}",
@@ -147,6 +156,8 @@ class CalendarTools:
 
     def check_conflicts(self, date: str, start_time: str, end_time: str) -> dict:
         """Check for scheduling conflicts."""
+        if self.db:
+            return self.db.check_conflicts(date, start_time, end_time)
         events = self.get_calendar_events(date)
         conflicts = []
         for evt in events:
@@ -161,6 +172,8 @@ class CalendarTools:
 
     def get_today_schedule(self) -> list[dict]:
         """Get today's schedule."""
+        if self.db:
+            return self.db.get_today_schedule()
         today = datetime.now().strftime("%Y-%m-%d")
         return self.get_calendar_events(today)
 

@@ -14,9 +14,10 @@ from business_team import config
 class TodoTools:
     """Tools for managing to-do lists."""
 
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.todo_file = config.DATA_DIR / "todos.json"
-        if not self.todo_file.exists():
+        if not self.db and not self.todo_file.exists():
             self.todo_file.write_text(json.dumps(self._get_demo_todos(), indent=2))
 
     @staticmethod
@@ -119,6 +120,8 @@ class TodoTools:
         assignee: str | None = None,
     ) -> list[dict]:
         """Get to-do items with optional filters."""
+        if self.db:
+            return self.db.get_todos(status=status, priority=priority, assignee=assignee)
         todos = json.loads(self.todo_file.read_text())
         if status:
             todos = [t for t in todos if t.get("status") == status]
@@ -142,6 +145,12 @@ class TodoTools:
         category: str = "general",
     ) -> dict:
         """Add a new to-do item."""
+        if self.db:
+            todo = self.db.create_todo(
+                title=title, priority=priority, description=description,
+                due_date=due_date, assignee=assignee, category=category,
+            )
+            return {"status": "created", "todo": todo}
         todos = json.loads(self.todo_file.read_text())
         todo = {
             "id": f"todo_{len(todos) + 1:04d}",
@@ -167,6 +176,11 @@ class TodoTools:
         notes: str | None = None,
     ) -> dict:
         """Update a to-do item."""
+        if self.db:
+            result = self.db.update_todo(todo_id, status=status, priority=priority, notes=notes)
+            if "error" in result:
+                return {"status": "not_found", "todo_id": todo_id}
+            return {"status": "updated", "todo": result}
         todos = json.loads(self.todo_file.read_text())
         for todo in todos:
             if todo["id"] == todo_id:
@@ -186,6 +200,8 @@ class TodoTools:
 
     def get_todo_summary(self) -> dict:
         """Get a summary of all to-dos."""
+        if self.db:
+            return self.db.get_todo_summary()
         todos = json.loads(self.todo_file.read_text())
         summary = {
             "total": len(todos),

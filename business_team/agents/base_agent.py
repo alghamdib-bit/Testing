@@ -21,10 +21,12 @@ from business_team.config import ConfigurationError
 class BaseAgent:
     """Base class for all agents in the business team."""
 
-    def __init__(self, name: str, role: str, system_prompt: str):
+    def __init__(self, name: str, role: str, system_prompt: str, memory=None, db=None):
         self.name = name
         self.role = role
         self.system_prompt = system_prompt
+        self.memory = memory
+        self.db = db
         self.client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
         self.model = config.CLAUDE_MODEL
         self.conversation_history: list[dict] = []
@@ -193,11 +195,20 @@ class BaseAgent:
         # Conversation overflow protection
         self._truncate_conversation_history()
 
+        # Build effective system prompt with memory context
+        effective_system_prompt = self.system_prompt
+        if self.memory:
+            context = self.memory.get_context_summary()
+            if context and context != "No prior context available.":
+                effective_system_prompt = (
+                    self.system_prompt + "\n\n## CONTEXTUAL MEMORY\n" + context
+                )
+
         while True:
             kwargs: dict[str, Any] = {
                 "model": self.model,
                 "max_tokens": 4096,
-                "system": self.system_prompt,
+                "system": effective_system_prompt,
                 "messages": self.conversation_history,
             }
             if self.tools:
@@ -257,6 +268,13 @@ class BaseAgent:
                 {"role": "assistant", "content": final_text}
             )
             self.logger.info(f"Response: {final_text[:200]}...")
+
+            # Log interaction to memory
+            if self.memory:
+                self.memory.add_interaction(
+                    self.name, user_message, final_text[:200]
+                )
+
             return final_text
 
     def execute_tool(self, tool_name: str, tool_input: dict) -> Any:
@@ -269,18 +287,21 @@ class BaseAgent:
 
     def log_activity(self, activity_type: str, details: str) -> None:
         """Log an agent activity to the shared activity log."""
-        entry = {
-            "agent": self.name,
-            "type": activity_type,
-            "details": details,
-            "timestamp": datetime.now().isoformat(),
-        }
-        log_file = config.DATA_DIR / "activity_log.json"
-        activities = []
-        if log_file.exists():
-            activities = json.loads(log_file.read_text())
-        activities.append(entry)
-        log_file.write_text(json.dumps(activities, indent=2))
+        if self.db:
+            self.db.log_activity(self.name, activity_type, details)
+        else:
+            entry = {
+                "agent": self.name,
+                "type": activity_type,
+                "details": details,
+                "timestamp": datetime.now().isoformat(),
+            }
+            log_file = config.DATA_DIR / "activity_log.json"
+            activities = []
+            if log_file.exists():
+                activities = json.loads(log_file.read_text())
+            activities.append(entry)
+            log_file.write_text(json.dumps(activities, indent=2))
         self.logger.info(f"Activity logged: {activity_type}")
 
     def get_status(self) -> dict:

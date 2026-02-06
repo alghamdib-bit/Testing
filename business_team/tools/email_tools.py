@@ -20,10 +20,11 @@ from business_team import config
 class EmailTools:
     """Tools for reading, summarizing, and managing emails."""
 
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.cfg = config.EMAIL_CONFIG
         self.email_log_file = config.DATA_DIR / "email_log.json"
-        if not self.email_log_file.exists():
+        if not self.db and not self.email_log_file.exists():
             self.email_log_file.write_text("[]")
 
     # -- Tool definitions for Claude API --
@@ -205,6 +206,13 @@ class EmailTools:
         action_items: list[str] | None = None,
     ) -> dict:
         """Log an email summary to the persistent log."""
+        if self.db:
+            entry = self.db.log_email(
+                subject=subject, sender=sender, summary=summary, priority=priority,
+                email_id=email_id or None, action_required=action_required,
+                action_items=action_items or [],
+            )
+            return {"status": "logged", "entry": entry}
         log = json.loads(self.email_log_file.read_text())
         entry = {
             "email_id": email_id,
@@ -251,6 +259,8 @@ class EmailTools:
         self, since_date: str | None = None, priority: str | None = None
     ) -> list[dict]:
         """Retrieve email log entries with optional filtering."""
+        if self.db:
+            return self.db.get_email_log(since_date=since_date, priority=priority)
         log = json.loads(self.email_log_file.read_text())
         if since_date:
             log = [e for e in log if e.get("logged_at", "") >= since_date]

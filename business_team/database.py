@@ -319,6 +319,7 @@ class Database:
         self,
         status: str | None = None,
         priority: str | None = None,
+        assignee: str | None = None,
     ) -> list[dict]:
         clauses: list[str] = []
         params: list[Any] = []
@@ -328,6 +329,9 @@ class Database:
         if priority:
             clauses.append("priority = ?")
             params.append(priority)
+        if assignee:
+            clauses.append("LOWER(assignee) LIKE ?")
+            params.append(f"%{assignee.lower()}%")
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         cur = self.conn.execute(f"SELECT * FROM todos{where} ORDER BY id", params)
         return [self._row_to_dict(r) for r in cur.fetchall()]
@@ -524,6 +528,44 @@ class Database:
         )
         self.conn.commit()
         return self.get_event(evt_id)  # type: ignore[return-value]
+
+    def update_event(self, event_id: str, **kwargs: Any) -> dict:
+        """Update fields on an existing calendar event."""
+        existing = self.get_event(event_id)
+        if existing is None:
+            return {"error": f"Event {event_id} not found"}
+
+        for field in ("title", "date", "start_time", "end_time", "location", "notes"):
+            if field in kwargs and kwargs[field] is not None:
+                existing[field] = kwargs[field]
+
+        self.conn.execute(
+            """UPDATE calendar_events
+               SET title = ?, date = ?, start_time = ?, end_time = ?,
+                   location = ?, notes = ?
+               WHERE id = ?""",
+            (
+                existing["title"], existing["date"],
+                existing["start_time"], existing["end_time"],
+                existing["location"], existing["notes"],
+                event_id,
+            ),
+        )
+        self.conn.commit()
+        return self.get_event(event_id)  # type: ignore[return-value]
+
+    def check_conflicts(self, date: str, start_time: str, end_time: str) -> dict:
+        """Check for scheduling conflicts on a given date/time."""
+        events = self.get_events(date)
+        conflicts = [
+            evt for evt in events
+            if evt.get("start_time", "") < end_time and evt.get("end_time", "") > start_time
+        ]
+        return {"has_conflicts": len(conflicts) > 0, "conflicts": conflicts}
+
+    def get_today_schedule(self) -> list[dict]:
+        """Get today's full schedule."""
+        return self.get_events(datetime.now().strftime("%Y-%m-%d"))
 
     # ------------------------------------------------------------------
     # Activity Log

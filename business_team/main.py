@@ -48,7 +48,10 @@ import sys
 from datetime import datetime
 
 from business_team.agents import OfficeManagerAgent
+from business_team.database import Database
 from business_team.email_poller import EmailPoller
+from business_team.memory import AgentMemory
+from business_team.scheduler import Scheduler
 
 
 def print_header(title: str) -> None:
@@ -235,6 +238,70 @@ def cmd_poll_reset(poller: EmailPoller) -> None:
     print()
 
 
+# ---- Scheduler Commands ----
+
+def cmd_schedule(scheduler: Scheduler) -> None:
+    print_header("SCHEDULED JOBS")
+    jobs = scheduler.get_upcoming_jobs()
+    if not jobs:
+        print("  No jobs scheduled.")
+    else:
+        for job in jobs:
+            print(f"  {job['job_name']:20s}  next: {job.get('next_run', 'N/A')}  interval: {job.get('interval', '?')} {job.get('unit', '')}")
+    print()
+
+
+def cmd_schedule_start(scheduler: Scheduler) -> None:
+    print_header("SCHEDULER — FOREGROUND MODE")
+    scheduler.start()
+
+
+def cmd_schedule_status(scheduler: Scheduler) -> None:
+    print_header("SCHEDULER STATUS")
+    jobs = scheduler.get_upcoming_jobs()
+    for job in jobs:
+        print(f"  {job['job_name']:20s}  next: {job.get('next_run', 'N/A')}")
+    log = scheduler.get_log(limit=5)
+    if log:
+        print("\n  Last 5 executions:")
+        for entry in log:
+            ts = entry.get("timestamp", "")[:19]
+            print(f"    [{ts}] {entry.get('job_name', '?')}: {entry.get('status', '?')} - {entry.get('details', '')[:60]}")
+    print()
+
+
+def cmd_schedule_log(scheduler: Scheduler) -> None:
+    print_header("SCHEDULER LOG")
+    log = scheduler.get_log(limit=20)
+    if not log:
+        print("  No scheduler log entries yet.")
+    else:
+        for entry in log:
+            ts = entry.get("timestamp", "")[:19]
+            print(f"  [{ts}] {entry.get('job_name', ''):20s} {entry.get('status', ''):8s} {entry.get('details', '')[:50]}")
+    print()
+
+
+def cmd_schedule_run(scheduler: Scheduler, job_name: str) -> None:
+    print_header(f"RUN JOB: {job_name}")
+    result = scheduler.run_now(job_name)
+    print(f"  {result}")
+    print()
+
+
+def cmd_migrate(db: Database) -> None:
+    print_header("DATABASE MIGRATION")
+    print("  Migrating JSON flat files to SQLite database...")
+    result = db.migrate_from_json()
+    print("\n  Migration Results:")
+    for entity, counts in result.items():
+        imported = counts.get("imported", 0)
+        skipped = counts.get("skipped", 0)
+        print(f"    {entity:20s}  imported: {imported}  skipped: {skipped}")
+    print(f"\n  Database: {db.db_path}")
+    print()
+
+
 # ---- Development Commands ----
 
 def cmd_audit(manager: OfficeManagerAgent) -> None:
@@ -286,13 +353,14 @@ def cmd_ask(manager: OfficeManagerAgent, message: str) -> None:
     print_result(result)
 
 
-def cmd_interactive(manager: OfficeManagerAgent, poller: EmailPoller) -> None:
+def cmd_interactive(manager: OfficeManagerAgent, poller: EmailPoller, scheduler: Scheduler = None) -> None:
     print_header("INTERACTIVE MODE")
     print("Type your requests to the Office Manager. Type 'quit' to exit.")
     print("The Office Manager can supervise agents AND develop/improve them.\n")
     print("Quick commands: 'daily brief', 'weekly brief', 'team status',")
     print("  'audit', 'test agents', 'dev log', 'reload <agent>',")
-    print("  'poll', 'poll status', 'poll notifications'\n")
+    print("  'poll', 'poll status', 'poll notifications',")
+    print("  'schedule', 'schedule status', 'schedule log'\n")
 
     while True:
         try:
@@ -347,6 +415,20 @@ def cmd_interactive(manager: OfficeManagerAgent, poller: EmailPoller) -> None:
         if lower == "check emails":
             cmd_check_emails(manager)
             continue
+        # Scheduler quick commands
+        if lower == "schedule" and scheduler:
+            cmd_schedule(scheduler)
+            continue
+        if lower == "schedule status" and scheduler:
+            cmd_schedule_status(scheduler)
+            continue
+        if lower == "schedule log" and scheduler:
+            cmd_schedule_log(scheduler)
+            continue
+        if lower.startswith("schedule run ") and scheduler:
+            job_name = lower.replace("schedule run ", "").strip()
+            cmd_schedule_run(scheduler, job_name)
+            continue
 
         result = manager.handle_manager_request(user_input)
         print_result(result)
@@ -388,6 +470,14 @@ def main() -> None:
             "dev-log",
             "develop",
             "reload",
+            # Scheduler
+            "schedule",
+            "schedule-start",
+            "schedule-status",
+            "schedule-log",
+            "schedule-run",
+            # Database
+            "migrate",
             # General
             "ask",
             "interactive",
@@ -424,9 +514,23 @@ def main() -> None:
             cmd_poll_reset(poller)
         return
 
+    # Migrate command only needs the database
+    if args.command == "migrate":
+        db = Database()
+        db.initialize()
+        cmd_migrate(db)
+        db.close()
+        return
+
+    # Initialize database, memory, and full agent system
+    db = Database()
+    db.initialize()
+    memory = AgentMemory()
+
     print("\nInitializing Business Team Agent System...")
-    manager = OfficeManagerAgent()
+    manager = OfficeManagerAgent(db=db, memory=memory)
     poller = EmailPoller()
+    scheduler = Scheduler(manager=manager, poller=poller)
     print("All agents ready. Office Manager has supervisor + developer capabilities.\n")
 
     commands = {
@@ -447,8 +551,13 @@ def main() -> None:
         "audit": lambda: cmd_audit(manager),
         "test-agents": lambda: cmd_test_agents(manager),
         "dev-log": lambda: cmd_dev_log(manager),
+        # Scheduler
+        "schedule": lambda: cmd_schedule(scheduler),
+        "schedule-start": lambda: cmd_schedule_start(scheduler),
+        "schedule-status": lambda: cmd_schedule_status(scheduler),
+        "schedule-log": lambda: cmd_schedule_log(scheduler),
         # General
-        "interactive": lambda: cmd_interactive(manager, poller),
+        "interactive": lambda: cmd_interactive(manager, poller, scheduler),
     }
 
     if args.command == "ask":
@@ -469,6 +578,12 @@ def main() -> None:
             print("Usage: python -m business_team.main reload secretary")
             sys.exit(1)
         cmd_reload(manager, args.message[0])
+    elif args.command == "schedule-run":
+        if not args.message:
+            print("Error: 'schedule-run' command requires a job name.")
+            print("Usage: python -m business_team.main schedule-run daily_brief")
+            sys.exit(1)
+        cmd_schedule_run(scheduler, args.message[0])
     elif args.command in commands:
         commands[args.command]()
     else:
