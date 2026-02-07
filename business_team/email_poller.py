@@ -2,7 +2,7 @@
 Email Poller — Periodic inbox monitoring for Gmail and SPL Exchange.
 
 Checks both inboxes at configurable intervals, detects new emails,
-flags urgent items, and stores notifications for the Secretary/Office Manager.
+flags urgent items, and stores notifications for the Secretary/Chief of Staff.
 
 Usage:
     # One-shot poll (check once and exit)

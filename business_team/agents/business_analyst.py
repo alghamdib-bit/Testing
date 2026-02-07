@@ -6,7 +6,7 @@ Responsibilities:
 - Create PowerPoint presentations with data-driven slides
 - Build HTML dashboards for real-time KPI monitoring
 - Produce channel performance analysis and recommendations
-- Support the Office Manager with visual reports
+- Support the Chief of Staff with visual reports
 """
 
 from typing import Any

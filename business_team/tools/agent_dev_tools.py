@@ -1,8 +1,8 @@
 """
-Agent Development Tools for the Office Manager.
+Agent Development Tools for the Chief of Staff.
 
-Allows the Office Manager to read, modify, and extend agent source code,
-system prompts, and tool registrations. This makes the Office Manager
+Allows the Chief of Staff to read, modify, and extend agent source code,
+system prompts, and tool registrations. This makes the Chief of Staff
 capable of developing and improving its own team.
 """
 
@@ -41,7 +41,7 @@ class AgentDevTools:
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "enum": ["secretary", "business_analyst", "projects_manager", "office_manager", "base_agent"],
+                            "enum": ["secretary", "business_analyst", "projects_manager", "chief_of_staff", "base_agent"],
                             "description": "Which agent's source to read",
                         },
                     },
@@ -89,7 +89,7 @@ class AgentDevTools:
                     "properties": {
                         "agent_name": {
                             "type": "string",
-                            "enum": ["secretary", "business_analyst", "projects_manager", "office_manager"],
+                            "enum": ["secretary", "business_analyst", "projects_manager", "chief_of_staff"],
                         },
                     },
                     "required": ["agent_name"],

@@ -54,21 +54,21 @@ def test_route_project_to_pm(router):
 
 
 # ------------------------------------------------------------------
-# 4. Route development request to office_manager
+# 4. Route development request to chief_of_staff
 # ------------------------------------------------------------------
-def test_route_develop_to_om(router):
-    """'improve the secretary agent' should route to office_manager."""
+def test_route_develop_to_cos(router):
+    """'improve the secretary agent' should route to chief_of_staff."""
     decision = router.route("improve the secretary agent")
-    assert decision.agent_name == "office_manager"
+    assert decision.agent_name == "chief_of_staff"
 
 
 # ------------------------------------------------------------------
-# 5. Vague/unknown request defaults to office_manager
+# 5. Vague/unknown request defaults to chief_of_staff
 # ------------------------------------------------------------------
 def test_route_unknown_defaults(router):
-    """A completely vague request should default to office_manager."""
+    """A completely vague request should default to chief_of_staff."""
     decision = router.route("xyzzy foobar baz")
-    assert decision.agent_name == "office_manager"
+    assert decision.agent_name == "chief_of_staff"
     assert decision.confidence == 0.5
     assert "No strong match" in decision.reasoning
 

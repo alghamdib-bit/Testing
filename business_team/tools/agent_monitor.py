@@ -1,5 +1,5 @@
 """
-Agent Monitoring & Testing Tools for the Office Manager.
+Agent Monitoring & Testing Tools for the Chief of Staff.
 
 Provides the ability to test agents, evaluate their output quality,
 track performance over time, and identify improvement opportunities.

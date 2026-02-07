@@ -39,7 +39,7 @@ class SmartRouter:
 
     Scores each agent based on keyword and pattern matches against the
     incoming request, then selects the highest-scoring agent. Falls back
-    to office_manager when no strong match is found.
+    to chief_of_staff when no strong match is found.
     """
 
     # Agent capability definitions
@@ -148,7 +148,7 @@ class SmartRouter:
             ],
             "description": "Project tracking, task management, and reporting",
         },
-        "office_manager": {
+        "chief_of_staff": {
             "keywords": [
                 "develop",
                 "improve",
@@ -258,12 +258,12 @@ class SmartRouter:
         max_possible = 10.0  # approximate max score
         confidence = min(best_score / max_possible, 1.0)
 
-        # If confidence is very low, default to office_manager
+        # If confidence is very low, default to chief_of_staff
         if confidence < 0.1:
-            best_agent = "office_manager"
+            best_agent = "chief_of_staff"
             confidence = 0.5
             reasoning = (
-                "No strong match found; routing to Office Manager "
+                "No strong match found; routing to Chief of Staff "
                 "for triage."
             )
         else:

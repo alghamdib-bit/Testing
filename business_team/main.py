@@ -3,7 +3,7 @@
 Business Team Multi-Agent System — Main Entry Point
 
 A multi-agent system powered by Claude for business office management.
-The Office Manager agent supervises AND develops Secretary, Business Analyst, and Projects Manager.
+The Chief of Staff agent supervises AND develops Secretary, Business Analyst, and Projects Manager.
 
 Usage:
     python -m business_team.main [command]
@@ -34,11 +34,11 @@ Commands:
     audit             Full team audit (capabilities, health, gaps)
     test-agents       Run standardized tests on all agents
     dev-log           Show agent development change log
-    develop <msg>     Ask Office Manager to develop/improve an agent
+    develop <msg>     Ask Chief of Staff to develop/improve an agent
     reload <agent>    Reload an agent after code changes
 
   General:
-    ask <message>     Send a request to the Office Manager
+    ask <message>     Send a request to the Chief of Staff
     interactive       Start interactive chat mode (default)
 """
 
@@ -47,7 +47,7 @@ import json
 import sys
 from datetime import datetime
 
-from business_team.agents import OfficeManagerAgent
+from business_team.agents import ChiefOfStaffAgent
 from business_team.database import Database
 from business_team.email_poller import EmailPoller
 from business_team.memory import AgentMemory
@@ -69,77 +69,77 @@ def print_result(result: str) -> None:
 
 # ---- Supervision Commands ----
 
-def cmd_daily_brief(manager: OfficeManagerAgent) -> None:
+def cmd_daily_brief(manager: ChiefOfStaffAgent) -> None:
     print_header("DAILY BRIEF")
     print("Gathering reports from all team members...")
     result = manager.generate_daily_brief()
     print_result(result)
 
 
-def cmd_weekly_brief(manager: OfficeManagerAgent) -> None:
+def cmd_weekly_brief(manager: ChiefOfStaffAgent) -> None:
     print_header("WEEKLY BRIEF")
     print("Compiling weekly reports from all team members...")
     result = manager.generate_weekly_brief()
     print_result(result)
 
 
-def cmd_check_emails(manager: OfficeManagerAgent) -> None:
+def cmd_check_emails(manager: ChiefOfStaffAgent) -> None:
     print_header("EMAIL CHECK")
     manager.secretary.reset_conversation()
     result = manager.secretary.check_inbox()
     print_result(result)
 
 
-def cmd_calendar(manager: OfficeManagerAgent) -> None:
+def cmd_calendar(manager: ChiefOfStaffAgent) -> None:
     print_header("TODAY'S CALENDAR")
     manager.secretary.reset_conversation()
     result = manager.secretary.get_calendar_briefing()
     print_result(result)
 
 
-def cmd_todos(manager: OfficeManagerAgent) -> None:
+def cmd_todos(manager: ChiefOfStaffAgent) -> None:
     print_header("TO-DO LIST")
     manager.secretary.reset_conversation()
     result = manager.secretary.get_todo_report()
     print_result(result)
 
 
-def cmd_spl_dashboard(manager: OfficeManagerAgent) -> None:
+def cmd_spl_dashboard(manager: ChiefOfStaffAgent) -> None:
     print_header("SPL DIGITAL CHANNELS DASHBOARD")
     manager.analyst.reset_conversation()
     result = manager.analyst.generate_channel_report()
     print_result(result)
 
 
-def cmd_spl_presentation(manager: OfficeManagerAgent) -> None:
+def cmd_spl_presentation(manager: ChiefOfStaffAgent) -> None:
     print_header("SPL BOARD PRESENTATION")
     manager.analyst.reset_conversation()
     result = manager.analyst.create_board_presentation()
     print_result(result)
 
 
-def cmd_project_status(manager: OfficeManagerAgent) -> None:
+def cmd_project_status(manager: ChiefOfStaffAgent) -> None:
     print_header("PROJECT PORTFOLIO STATUS")
     manager.projects_manager.reset_conversation()
     result = manager.projects_manager.get_portfolio_status()
     print_result(result)
 
 
-def cmd_weekly_report(manager: OfficeManagerAgent) -> None:
+def cmd_weekly_report(manager: ChiefOfStaffAgent) -> None:
     print_header("WEEKLY PROJECT REPORT")
     manager.projects_manager.reset_conversation()
     result = manager.projects_manager.generate_weekly_update()
     print_result(result)
 
 
-def cmd_monthly_report(manager: OfficeManagerAgent) -> None:
+def cmd_monthly_report(manager: ChiefOfStaffAgent) -> None:
     print_header("MONTHLY PROJECT REPORT")
     manager.projects_manager.reset_conversation()
     result = manager.projects_manager.generate_monthly_update()
     print_result(result)
 
 
-def cmd_status_board(manager: OfficeManagerAgent) -> None:
+def cmd_status_board(manager: ChiefOfStaffAgent) -> None:
     print_header("PROJECT STATUS BOARD")
     manager.projects_manager.reset_conversation()
     result = manager.projects_manager.think(
@@ -152,7 +152,7 @@ def cmd_status_board(manager: OfficeManagerAgent) -> None:
     print_result(result)
 
 
-def cmd_team_status(manager: OfficeManagerAgent) -> None:
+def cmd_team_status(manager: ChiefOfStaffAgent) -> None:
     print_header("TEAM STATUS")
     status = manager.get_team_status()
     print(json.dumps(status, indent=2))
@@ -304,21 +304,21 @@ def cmd_migrate(db: Database) -> None:
 
 # ---- Development Commands ----
 
-def cmd_audit(manager: OfficeManagerAgent) -> None:
+def cmd_audit(manager: ChiefOfStaffAgent) -> None:
     print_header("TEAM AUDIT")
     print("Analyzing all agents: capabilities, health, and improvement opportunities...")
     result = manager.audit_team()
     print_result(result)
 
 
-def cmd_test_agents(manager: OfficeManagerAgent) -> None:
+def cmd_test_agents(manager: ChiefOfStaffAgent) -> None:
     print_header("AGENT TESTING")
     print("Running standardized tests on all agents...")
     result = manager.test_all_agents()
     print_result(result)
 
 
-def cmd_dev_log(manager: OfficeManagerAgent) -> None:
+def cmd_dev_log(manager: ChiefOfStaffAgent) -> None:
     print_header("DEVELOPMENT LOG")
     log = manager.dev_tools.get_dev_log(30)
     if not log:
@@ -333,13 +333,13 @@ def cmd_dev_log(manager: OfficeManagerAgent) -> None:
     print()
 
 
-def cmd_develop(manager: OfficeManagerAgent, message: str) -> None:
+def cmd_develop(manager: ChiefOfStaffAgent, message: str) -> None:
     print_header("AGENT DEVELOPMENT")
     result = manager.develop_agent(message)
     print_result(result)
 
 
-def cmd_reload(manager: OfficeManagerAgent, agent_name: str) -> None:
+def cmd_reload(manager: ChiefOfStaffAgent, agent_name: str) -> None:
     print_header(f"RELOAD AGENT: {agent_name}")
     result = manager.reload_agent(agent_name)
     print(json.dumps(result, indent=2))
@@ -347,16 +347,16 @@ def cmd_reload(manager: OfficeManagerAgent, agent_name: str) -> None:
 
 # ---- General Commands ----
 
-def cmd_ask(manager: OfficeManagerAgent, message: str) -> None:
-    print_header("OFFICE MANAGER RESPONSE")
+def cmd_ask(manager: ChiefOfStaffAgent, message: str) -> None:
+    print_header("CHIEF OF STAFF RESPONSE")
     result = manager.handle_manager_request(message)
     print_result(result)
 
 
-def cmd_interactive(manager: OfficeManagerAgent, poller: EmailPoller, scheduler: Scheduler = None) -> None:
+def cmd_interactive(manager: ChiefOfStaffAgent, poller: EmailPoller, scheduler: Scheduler = None) -> None:
     print_header("INTERACTIVE MODE")
-    print("Type your requests to the Office Manager. Type 'quit' to exit.")
-    print("The Office Manager can supervise agents AND develop/improve them.\n")
+    print("Type your requests to the Chief of Staff. Type 'quit' to exit.")
+    print("The Chief of Staff can supervise agents AND develop/improve them.\n")
     print("Quick commands: 'daily brief', 'weekly brief', 'team status',")
     print("  'audit', 'test agents', 'dev log', 'reload <agent>',")
     print("  'poll', 'poll status', 'poll notifications',")
@@ -528,10 +528,10 @@ def main() -> None:
     memory = AgentMemory()
 
     print("\nInitializing Business Team Agent System...")
-    manager = OfficeManagerAgent(db=db, memory=memory)
+    manager = ChiefOfStaffAgent(db=db, memory=memory)
     poller = EmailPoller()
     scheduler = Scheduler(manager=manager, poller=poller)
-    print("All agents ready. Office Manager has supervisor + developer capabilities.\n")
+    print("All agents ready. Chief of Staff has supervisor + developer capabilities.\n")
 
     commands = {
         # Supervision

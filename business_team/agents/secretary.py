@@ -5,7 +5,7 @@ Responsibilities:
 - Read, summarize, and log emails from Gmail (personal) and SPL Exchange (work)
 - Manage calendar events from Google Calendar (personal) and Exchange (work)
 - Maintain the to-do list
-- Flag urgent items to the Office Manager
+- Flag urgent items to the Chief of Staff
 - Produce daily inbox digests combining all sources
 """
 

@@ -75,7 +75,7 @@ def test_imports():
         from business_team.agents.secretary import SecretaryAgent
         from business_team.agents.business_analyst import BusinessAnalystAgent
         from business_team.agents.projects_manager import ProjectsManagerAgent
-        from business_team.agents.office_manager import OfficeManagerAgent
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
         check("all 5 agent modules", True)
     except Exception as e:
         check("all 5 agent modules", False, str(e))
@@ -554,27 +554,27 @@ def test_agent_tool_routing():
 
 
 # ============================================================
-# Section 6: Office Manager Dev Tool Routing
+# Section 6: Chief of Staff Dev Tool Routing
 # ============================================================
-def test_office_manager_routing():
-    section("6. Office Manager Dev Tool Routing")
+def test_chief_of_staff_routing():
+    section("6. Chief of Staff Dev Tool Routing")
 
-    from business_team.agents.office_manager import OfficeManagerAgent
-    mgr = OfficeManagerAgent()
+    from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+    mgr = ChiefOfStaffAgent()
 
     # Dev tools routing
     result = mgr.execute_tool("read_agent_source", {"agent_name": "secretary"})
-    check("OM routes read_agent_source", "source" in result)
+    check("CoS routes read_agent_source", "source" in result)
 
     result = mgr.execute_tool("analyze_agent_capabilities", {"agent_name": "business_analyst"})
-    check("OM routes analyze_agent_capabilities", "methods" in result)
+    check("CoS routes analyze_agent_capabilities", "methods" in result)
 
     result = mgr.execute_tool("backup_agent", {"agent_name": "projects_manager"})
-    check("OM routes backup_agent", result.get("status") == "backed_up")
+    check("CoS routes backup_agent", result.get("status") == "backed_up")
 
     # Monitor tools routing
     result = mgr.execute_tool("run_agent_health_check", {"agent_name": "secretary"})
-    check("OM routes run_agent_health_check", "healthy" in result)
+    check("CoS routes run_agent_health_check", "healthy" in result)
     check("Secretary health check passes", result.get("healthy") is True)
 
     result = mgr.execute_tool("run_agent_health_check", {"agent_name": "business_analyst"})
@@ -591,7 +591,7 @@ def test_office_manager_routing():
     status = mgr.get_team_status()
     check("get_team_status works", "secretary" in status)
     check("team status has all agents", all(
-        k in status for k in ("office_manager", "secretary", "business_analyst", "projects_manager")
+        k in status for k in ("chief_of_staff", "secretary", "business_analyst", "projects_manager")
     ))
 
 
@@ -619,7 +619,7 @@ def main():
     test_email_poller()
     test_agent_dev_tools()
     test_agent_tool_routing()
-    test_office_manager_routing()
+    test_chief_of_staff_routing()
 
     # Summary
     print("\n" + "=" * 50)

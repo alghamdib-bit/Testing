@@ -5,7 +5,7 @@ Runs periodic tasks: daily briefs, email polling, weekly/monthly reports.
 
 Usage:
     from business_team.scheduler import Scheduler
-    scheduler = Scheduler(office_manager, email_poller)
+    scheduler = Scheduler(chief_of_staff, email_poller)
     scheduler.start()  # blocks, runs in foreground
     # or
     scheduler.start_background()  # runs in background thread
@@ -28,10 +28,10 @@ class Scheduler:
     """Manages scheduled operations for the business team."""
 
     def __init__(self, manager=None, poller=None):
-        """Initialize with optional OfficeManagerAgent and EmailPoller instances.
+        """Initialize with optional ChiefOfStaffAgent and EmailPoller instances.
 
         Args:
-            manager: An OfficeManagerAgent instance (or None for testing).
+            manager: A ChiefOfStaffAgent instance (or None for testing).
             poller: An EmailPoller instance (or None for testing).
         """
         self.manager = manager

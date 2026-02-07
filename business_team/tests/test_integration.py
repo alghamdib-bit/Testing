@@ -432,28 +432,28 @@ class TestProjectsManagerAgent:
 
 
 # ============================================================
-# OFFICE MANAGER AGENT TESTS
+# CHIEF OF STAFF AGENT TESTS
 # ============================================================
 
-class TestOfficeManagerAgent:
-    """Integration tests for the Office Manager agent."""
+class TestChiefOfStaffAgent:
+    """Integration tests for the Chief of Staff agent."""
 
-    def test_om_text_response(self, mock_api):
-        """Test Office Manager returns plain text response."""
+    def test_cos_text_response(self, mock_api):
+        """Test Chief of Staff returns plain text response."""
         mock_api.responses = [
             make_text_response("Team status is nominal. No alarms active."),
         ]
 
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
         result = agent.think("How is the team?")
 
         assert "team" in result.lower() or "status" in result.lower()
         assert mock_api.client.messages.create.call_count == 1
         assert len(agent.conversation_history) == 2
 
-    def test_om_routes_dev_tool(self, mock_api):
-        """Test Office Manager routes read_agent_source to AgentDevTools."""
+    def test_cos_routes_dev_tool(self, mock_api):
+        """Test Chief of Staff routes read_agent_source to AgentDevTools."""
         mock_api.responses = [
             make_tool_use_response(
                 "read_agent_source",
@@ -463,8 +463,8 @@ class TestOfficeManagerAgent:
             make_text_response("The Secretary agent has 194 lines of code with 9 methods."),
         ]
 
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
         result = agent.think("Read the secretary agent source code")
 
         assert mock_api.client.messages.create.call_count == 2
@@ -475,8 +475,8 @@ class TestOfficeManagerAgent:
         assert parsed["agent_name"] == "secretary"
         assert parsed["line_count"] > 50
 
-    def test_om_routes_monitor_tool(self, mock_api):
-        """Test Office Manager routes run_agent_health_check to AgentMonitorTools."""
+    def test_cos_routes_monitor_tool(self, mock_api):
+        """Test Chief of Staff routes run_agent_health_check to AgentMonitorTools."""
         mock_api.responses = [
             make_tool_use_response(
                 "run_agent_health_check",
@@ -486,8 +486,8 @@ class TestOfficeManagerAgent:
             make_text_response("Secretary agent health check passed. All systems operational."),
         ]
 
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
         result = agent.think("Run a health check on the secretary")
 
         assert mock_api.client.messages.create.call_count == 2
@@ -498,8 +498,8 @@ class TestOfficeManagerAgent:
         assert parsed["checks"]["tools_registered"] is True
         assert parsed["checks"]["prompt_loaded"] is True
 
-    def test_om_analyzes_capabilities(self, mock_api):
-        """Test Office Manager routes analyze_agent_capabilities to AgentDevTools."""
+    def test_cos_analyzes_capabilities(self, mock_api):
+        """Test Chief of Staff routes analyze_agent_capabilities to AgentDevTools."""
         mock_api.responses = [
             make_tool_use_response(
                 "analyze_agent_capabilities",
@@ -509,8 +509,8 @@ class TestOfficeManagerAgent:
             make_text_response("Business Analyst has 10 methods and 5 tools registered."),
         ]
 
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
         result = agent.think("Analyze the business analyst capabilities")
 
         assert mock_api.client.messages.create.call_count == 2
@@ -521,16 +521,13 @@ class TestOfficeManagerAgent:
         assert parsed["method_count"] > 0
         assert parsed["agent_name"] == "business_analyst"
 
-    def test_om_get_team_status(self, mock_api):
+    def test_cos_get_team_status(self, mock_api):
         """Test get_team_status() returns status for all agents (no API call needed)."""
-        # get_team_status() does NOT call think(), so no mock responses needed.
-        # However, OfficeManagerAgent.__init__ creates sub-agents which call
-        # anthropic.Anthropic(), so we still need the mock_api fixture.
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
         status = agent.get_team_status()
 
-        assert "office_manager" in status
+        assert "chief_of_staff" in status
         assert "secretary" in status
         assert "business_analyst" in status
         assert "projects_manager" in status
@@ -538,17 +535,17 @@ class TestOfficeManagerAgent:
         assert "timestamp" in status
 
         # Verify each agent status has expected fields
-        for agent_key in ("office_manager", "secretary", "business_analyst", "projects_manager"):
+        for agent_key in ("chief_of_staff", "secretary", "business_analyst", "projects_manager"):
             agent_status = status[agent_key]
             assert "name" in agent_status
             assert "role" in agent_status
             assert "inbox_count" in agent_status
             assert "conversation_turns" in agent_status
 
-    def test_om_execute_tool_unknown(self, mock_api):
+    def test_cos_execute_tool_unknown(self, mock_api):
         """Test that unknown tool names return an error dict."""
-        from business_team.agents.office_manager import OfficeManagerAgent
-        agent = OfficeManagerAgent()
+        from business_team.agents.chief_of_staff import ChiefOfStaffAgent
+        agent = ChiefOfStaffAgent()
 
         result = agent.execute_tool("nonexistent_tool", {"arg": "value"})
         assert isinstance(result, dict)
