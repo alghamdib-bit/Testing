@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "onenote": {
+      "command": "node",
+      "args": ["/home/user/Testing/onenote-mcp/onenote-mcp.mjs"],
+      "type": "stdio"
+    }
+  }
+}
