@@ -1,4 +1,5 @@
 import { Client } from '@microsoft/microsoft-graph-client';
+import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -39,7 +40,8 @@ async function listNotebooks() {
     const client = Client.init({
       authProvider: (done) => {
         done(null, accessToken);
-      }
+      },
+      fetchOptions: { fetch }
     });
 
     // Get notebooks
