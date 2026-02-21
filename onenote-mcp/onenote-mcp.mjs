@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 import { DeviceCodeCredential } from '@azure/identity';
-import fetch from 'node-fetch';
+import { z } from 'zod';
 
 // Load environment variables
 dotenv.config();
@@ -183,10 +183,11 @@ server.tool(
 server.tool(
   "saveAccessToken",
   "Save a Microsoft Graph access token for later use",
-  async (params) => {
+  { token: z.string().describe("The Microsoft Graph access token to save") },
+  async ({ token: tokenValue }) => {
     try {
       // Save the token for future use
-      accessToken = params.random_string;
+      accessToken = tokenValue;
       const tokenData = JSON.stringify({ token: accessToken });
       fs.writeFileSync(tokenFilePath, tokenData);
       await createGraphClient();
@@ -279,28 +280,25 @@ server.tool(
 server.tool(
   "listPages",
   "List all pages in a section",
-  async (params) => {
+  { sectionId: z.string().optional().describe("Section ID to list pages from. If omitted, uses the first section.") },
+  async ({ sectionId }) => {
     try {
       await ensureGraphClient();
-      // Get sections first
-      const sectionsResponse = await graphClient.api(`/me/onenote/sections`).get();
-      
-      if (sectionsResponse.value.length === 0) {
-        return { 
-          content: [
-            {
-              type: "text",
-              text: "[]"
-            }
-          ]
-        };
+
+      let targetSectionId = sectionId;
+      if (!targetSectionId) {
+        const sectionsResponse = await graphClient.api(`/me/onenote/sections`).get();
+        if (sectionsResponse.value.length === 0) {
+          return {
+            content: [{ type: "text", text: "[]" }]
+          };
+        }
+        targetSectionId = sectionsResponse.value[0].id;
       }
-      
-      // Use the first section
-      const sectionId = sectionsResponse.value[0].id;
-      const response = await graphClient.api(`/me/onenote/sections/${sectionId}/pages`).get();
-      
-      return { 
+
+      const response = await graphClient.api(`/me/onenote/sections/${targetSectionId}/pages`).get();
+
+      return {
         content: [
           {
             type: "text",
@@ -318,39 +316,39 @@ server.tool(
 // Tool for getting the content of a page
 server.tool(
   "getPage",
-  "Get the content of a page",
-  async (params) => {
+  "Get the content of a page by its ID or title",
+  { pageIdOrTitle: z.string().optional().describe("Page ID or title to search for. If omitted, returns the first page.") },
+  async ({ pageIdOrTitle }) => {
     try {
-      console.error("GetPage called with params:", params);
+      console.error("GetPage called with:", pageIdOrTitle);
       await ensureGraphClient();
-      
+
       // First, list all pages to find the one we want
       const pagesResponse = await graphClient.api('/me/onenote/pages').get();
       console.error("Got", pagesResponse.value.length, "pages");
-      
+
       let targetPage;
-      
-      // If a page ID is provided, use it to find the page
-      if (params.random_string && params.random_string.length > 0) {
-        const pageId = params.random_string;
-        console.error("Looking for page with ID:", pageId);
-        
-        // Look for exact match first
-        targetPage = pagesResponse.value.find(p => p.id === pageId);
-        
+
+      // If a page ID or title is provided, use it to find the page
+      if (pageIdOrTitle && pageIdOrTitle.length > 0) {
+        console.error("Looking for page:", pageIdOrTitle);
+
+        // Look for exact ID match first
+        targetPage = pagesResponse.value.find(p => p.id === pageIdOrTitle);
+
         // If no exact match, try matching by title
         if (!targetPage) {
           console.error("No exact match, trying title search");
-          targetPage = pagesResponse.value.find(p => 
-            p.title && p.title.toLowerCase().includes(params.random_string.toLowerCase())
+          targetPage = pagesResponse.value.find(p =>
+            p.title && p.title.toLowerCase().includes(pageIdOrTitle.toLowerCase())
           );
         }
-        
+
         // If still no match, try partial ID match
         if (!targetPage) {
           console.error("No title match, trying partial ID match");
-          targetPage = pagesResponse.value.find(p => 
-            p.id.includes(pageId) || pageId.includes(p.id)
+          targetPage = pagesResponse.value.find(p =>
+            p.id.includes(pageIdOrTitle) || pageIdOrTitle.includes(p.id)
           );
         }
       } else {
@@ -423,39 +421,46 @@ server.tool(
 // Tool for creating a new page in a section
 server.tool(
   "createPage",
-  "Create a new page in a section",
-  async (params) => {
+  "Create a new page in a OneNote section",
+  {
+    title: z.string().optional().describe("Title for the new page. Defaults to 'New Page'."),
+    content: z.string().optional().describe("HTML body content for the page. Defaults to a sample paragraph."),
+    sectionId: z.string().optional().describe("Section ID to create the page in. If omitted, uses the first section.")
+  },
+  async ({ title, content: bodyContent, sectionId }) => {
     try {
       await ensureGraphClient();
-      // Get sections first
-      const sectionsResponse = await graphClient.api(`/me/onenote/sections`).get();
-      
-      if (sectionsResponse.value.length === 0) {
-        throw new Error("No sections found");
+
+      let targetSectionId = sectionId;
+      if (!targetSectionId) {
+        const sectionsResponse = await graphClient.api(`/me/onenote/sections`).get();
+        if (sectionsResponse.value.length === 0) {
+          throw new Error("No sections found");
+        }
+        targetSectionId = sectionsResponse.value[0].id;
       }
-      
-      // Use the first section
-      const sectionId = sectionsResponse.value[0].id;
-      
-      // Create simple HTML content
+
+      const pageTitle = title || "New Page";
+      const pageBody = bodyContent || "<p>This is a new page created via the Microsoft Graph API</p>";
+
       const simpleHtml = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>New Page</title>
+            <title>${pageTitle}</title>
           </head>
           <body>
-            <p>This is a new page created via the Microsoft Graph API</p>
+            ${pageBody}
           </body>
         </html>
       `;
-      
+
       const response = await graphClient
-        .api(`/me/onenote/sections/${sectionId}/pages`)
+        .api(`/me/onenote/sections/${targetSectionId}/pages`)
         .header("Content-Type", "application/xhtml+xml")
         .post(simpleHtml);
-      
-      return { 
+
+      return {
         content: [
           {
             type: "text",
@@ -473,17 +478,18 @@ server.tool(
 // Tool for searching pages
 server.tool(
   "searchPages",
-  "Search for pages across notebooks",
-  async (params) => {
+  "Search for pages across notebooks by title",
+  { query: z.string().optional().describe("Search term to filter pages by title. If omitted, returns all pages.") },
+  async ({ query }) => {
     try {
       await ensureGraphClient();
-      
+
       // Get all pages
       const response = await graphClient.api(`/me/onenote/pages`).get();
-      
+
       // If search string is provided, filter the results
-      if (params.random_string && params.random_string.length > 0) {
-        const searchTerm = params.random_string.toLowerCase();
+      if (query && query.length > 0) {
+        const searchTerm = query.toLowerCase();
         const filteredPages = response.value.filter(page => {
           // Search in title
           if (page.title && page.title.toLowerCase().includes(searchTerm)) {
